@@ -1,4 +1,4 @@
--- Query: Find all Rental items/contracts with Override Rates, comparing Base Catalog Rate, Contract Rate, and Override Rate
+-- Query: Find all Rental items/contracts with Override Rates (Last 12 Months)
 -- Database: Pacsoft NG (MMS_WH_P)
 -- Environment: READ-ONLY
 
@@ -49,4 +49,7 @@ OUTER APPLY (
 ) sn
 WHERE f.fOverrideRate IS NOT NULL 
   AND f.fOverrideRate <> 0
-ORDER BY COALESCE(sd.sdModifiedDate, f.fModifiedDate, sd.sdEnteredDate) DESC;
+  -- Added 12-month rolling filter up to current timestamp
+  AND COALESCE(sd.sdModifiedDate, f.fModifiedDate, sd.sdEnteredDate, f.fCreatedDate) >= DATEADD(year, -1, GETDATE())
+  AND COALESCE(sd.sdModifiedDate, f.fModifiedDate, sd.sdEnteredDate, f.fCreatedDate) <= GETDATE()
+ORDER BY COALESCE(sd.sdModifiedDate, f.fModifiedDate, sd.sdEnteredDate, f.fCreatedDate) DESC;
