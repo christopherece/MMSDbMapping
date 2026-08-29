@@ -1,4 +1,4 @@
--- Query: Find all Rental items/contracts with Override Rates, modification details, and Smart Notes
+-- Query: Find all Rental items/contracts with Override Rates, comparing Base Catalog Rate, Contract Rate, and Override Rate
 -- Database: Pacsoft NG (MMS_WH_P)
 -- Environment: READ-ONLY
 
@@ -12,9 +12,11 @@ SELECT
     v.mmveVesselName AS VesselName,
     b.mmbeName AS BerthCode,
     sd.sdInvoiceDescription AS ChargeDescription,
-    f.fSalesRate AS StandardRate,
-    f.fOverrideRate AS OverrideRate,
-    (f.fOverrideRate - f.fSalesRate) AS RateVariance,
+    pr.mmpeAmount1 AS CatalogBaseRate,
+    f.fContractRate AS ContractBaseRate,
+    f.fOverrideRate AS ManualOverrideRate,
+    f.fSalesRate AS AppliedSalesRate,
+    (f.fOverrideRate - ISNULL(NULLIF(f.fContractRate, 0), pr.mmpeAmount1)) AS OverrideVarianceFromBase,
     COALESCE(
         eModSD.mmemFirstName + ' ' + eModSD.mmemSurname,
         eModF.mmemFirstName + ' ' + eModF.mmemSurname,
@@ -31,6 +33,7 @@ LEFT JOIN dbo.tmmRentalAgreement ra ON sh.shContractRALinkID = ra.mmraID
 LEFT JOIN dbo.tmmCustomer c ON sh.shCustomerID = c.mmcuID
 LEFT JOIN dbo.tmmVessel v ON sh.shVesselID = v.mmveID
 LEFT JOIN dbo.tmmBerth b ON sd.sdLocationID = b.mmbeID
+LEFT JOIN dbo.tmmProductRate pr ON sd.sdProductID = pr.mmpeProductPtr
 LEFT JOIN dbo.tmmEmployee eModSD ON sd.sdModifiedByID = eModSD.mmemID
 LEFT JOIN dbo.tmmEmployee eModF ON f.fModifiedBy = eModF.mmemID
 LEFT JOIN dbo.tmmEmployee eEntSD ON sd.sdEnteredByID = eEntSD.mmemID
