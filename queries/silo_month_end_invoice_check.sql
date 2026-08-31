@@ -22,11 +22,25 @@ LastInvoice AS (
     WHERE th.mmthTransactionDate >= DATEADD(month, DATEDIFF(month, 0, GETDATE()) - 1, 0)
       AND th.mmthTransactionDate < DATEADD(day, 1, DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0))
     GROUP BY th.mmthCustomerPtr
+),
+CustomerBerth AS (
+    SELECT
+        oa.mmoaCustomerPtr AS CustomerID,
+        b.mmbeName AS BerthNumber,
+        ROW_NUMBER() OVER (
+            PARTITION BY oa.mmoaCustomerPtr
+            ORDER BY oa.mmoaStartDate DESC, oa.mmoaID DESC
+        ) AS rn
+    FROM dbo.tmmOwnershipAgreement oa
+    LEFT JOIN dbo.tmmBerth b
+        ON oa.mmoaBerthPtr = b.mmbeID
+    WHERE oa.mmoaActive = 1
 )
 SELECT
     a.shCustomerID AS CustomerID,
     c.mmcuAccountCode AS AccountCode,
     ISNULL(c.mmcuLongName, ISNULL(c.mmcuFirstName + ' ' + c.mmcuSurname, c.mmcuSurname)) AS CustomerName,
+    cb.BerthNumber,
     a.FirstActivityDate,
     a.LastActivityDate,
     a.ServiceHeaderLastInvoiceDate,
@@ -42,6 +56,9 @@ SELECT
 FROM Activity a
 LEFT JOIN dbo.tmmCustomer c
     ON a.shCustomerID = c.mmcuID
+LEFT JOIN CustomerBerth cb
+    ON cb.CustomerID = a.shCustomerID
+   AND cb.rn = 1
 LEFT JOIN LastInvoice li
     ON a.shCustomerID = li.CustomerID
 ORDER BY a.shCustomerID;
